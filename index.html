@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="免费图床，基于 Telegram 的图片上传工具">
+  <title>Telegraph-Image | 免费图床</title>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
+  <script src="https://js.sentry-cdn.com/219f636ac7bde5edab2c3e16885cb535.min.js" crossorigin="anonymous"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 40%, #312e81 100%);
+      color: #e2e8f0;
+      padding: 24px 16px 48px;
+    }
+
+    .page {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    header .logo {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(8px);
+      margin-bottom: 12px;
+      font-size: 24px;
+      color: #93c5fd;
+    }
+
+    header h1 {
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: #f8fafc;
+    }
+
+    header p {
+      margin-top: 8px;
+      font-size: 0.95rem;
+      color: #94a3b8;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 20px;
+      padding: 28px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+    }
+
+    .dropzone {
+      border: 2px dashed rgba(148, 163, 184, 0.45);
+      border-radius: 16px;
+      padding: 48px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s, transform 0.15s;
+    }
+
+    .dropzone:hover {
+      border-color: #60a5fa;
+      background: rgba(96, 165, 250, 0.08);
+    }
+
+    .dropzone.dragover {
+      border-color: #38bdf8;
+      background: rgba(56, 189, 248, 0.15);
+      transform: scale(1.01);
+    }
+
+    .dropzone .icon {
+      font-size: 2.5rem;
+      color: #60a5fa;
+      margin-bottom: 12px;
+    }
+
+    .dropzone .title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #f1f5f9;
+      margin-bottom: 6px;
+    }
+
+    .dropzone .hint {
+      font-size: 0.875rem;
+      color: #94a3b8;
+    }
+
+    .dropzone .hint span {
+      color: #60a5fa;
+    }
+
+    #fileInput { display: none; }
+
+    .toolbar {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .toolbar.visible { display: flex; }
+
+    .toolbar-left {
+      font-size: 0.875rem;
+      color: #94a3b8;
+    }
+
+    .toolbar-left strong { color: #e2e8f0; }
+
+    .toolbar-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      font-size: 0.8125rem;
+      font-weight: 500;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s, opacity 0.15s;
+    }
+
+    .btn-primary {
+      background: #3b82f6;
+      color: #fff;
+    }
+
+    .btn-primary:hover { background: #2563eb; }
+
+    .btn-ghost {
+      background: rgba(255, 255, 255, 0.1);
+      color: #e2e8f0;
+    }
+
+    .btn-ghost:hover { background: rgba(255, 255, 255, 0.16); }
+
+    .btn-sm {
+      padding: 5px 10px;
+      font-size: 0.75rem;
+    }
+
+    .btn.copied {
+      background: #059669 !important;
+      color: #fff !important;
+    }
+
+    .results {
+      margin-top: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .result-item {
+      display: flex;
+      gap: 14px;
+      padding: 14px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      align-items: flex-start;
+    }
+
+    .result-thumb {
+      flex-shrink: 0;
+      width: 64px;
+      height: 64px;
+      border-radius: 8px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.06);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      color: #64748b;
+    }
+
+    .result-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .result-body {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .result-name {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #f1f5f9;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 4px;
+    }
+
+    .result-url {
+      font-size: 0.75rem;
+      color: #64748b;
+      word-break: break-all;
+      margin-bottom: 8px;
+      display: none;
+    }
+
+    .result-item.success .result-url { display: block; color: #94a3b8; }
+
+    .result-status {
+      font-size: 0.8125rem;
+      color: #94a3b8;
+    }
+
+    .result-item.uploading .result-status { color: #60a5fa; }
+    .result-item.error .result-status { color: #f87171; }
+    .result-item.success .result-status { display: none; }
+
+    .result-actions {
+      display: none;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+
+    .result-item.success .result-actions { display: flex; }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #1e293b;
+      color: #f1f5f9;
+      padding: 12px 20px;
+      border-radius: 10px;
+      font-size: 0.875rem;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      opacity: 0;
+      transition: transform 0.3s, opacity 0.3s;
+      z-index: 1000;
+      max-width: 90vw;
+      text-align: center;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    .toast.error { background: #7f1d1d; }
+
+    footer {
+      text-align: center;
+      margin-top: 24px;
+      font-size: 0.8125rem;
+      color: #64748b;
+    }
+
+    footer a {
+      color: #60a5fa;
+      text-decoration: none;
+    }
+
+    footer a:hover { text-decoration: underline; }
+
+    @media (max-width: 480px) {
+      .card { padding: 20px 16px; }
+      .dropzone { padding: 36px 16px; }
+      .result-item { flex-direction: column; }
+      .result-thumb { width: 100%; height: 120px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <div class="logo"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+      <h1>Telegraph-Image</h1>
+      <p>免费图床 · 拖拽或点击上传 · 支持批量 · 一键复制链接</p>
+    </header>
+
+    <main class="card">
+      <div class="dropzone" id="dropzone" role="button" tabindex="0" aria-label="上传文件">
+        <div class="icon"><i class="fa-solid fa-images"></i></div>
+        <div class="title">拖拽文件到此处，或点击选择</div>
+        <div class="hint">支持多选 · 单文件最大 <span>20MB</span></div>
+      </div>
+      <input type="file" id="fileInput" multiple accept="image/*,video/*,audio/*,*/*">
+
+      <div class="toolbar" id="toolbar">
+        <div class="toolbar-left">
+          已上传 <strong id="successCount">0</strong> / <strong id="totalCount">0</strong>
+        </div>
+        <div class="toolbar-actions">
+          <button type="button" class="btn btn-primary btn-sm" id="copyAllBtn">
+            <i class="fa-solid fa-copy"></i> 复制全部直链
+          </button>
+          <button type="button" class="btn btn-ghost btn-sm" id="clearBtn">
+            <i class="fa-solid fa-trash-can"></i> 清空列表
+          </button>
+        </div>
+      </div>
+
+      <div class="results" id="results"></div>
+    </main>
+
+    <footer>
+      <a href="./admin.html">后台管理</a>
+    </footer>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script>
+    (function () {
+      const UPLOAD_URL = './upload';
+      const MAX_SIZE = 20 * 1024 * 1024;
+      const MAX_CONCURRENT = 3;
+
+      const dropzone = document.getElementById('dropzone');
+      const fileInput = document.getElementById('fileInput');
+      const resultsEl = document.getElementById('results');
+      const toolbar = document.getElementById('toolbar');
+      const successCountEl = document.getElementById('successCount');
+      const totalCountEl = document.getElementById('totalCount');
+      const copyAllBtn = document.getElementById('copyAllBtn');
+      const clearBtn = document.getElementById('clearBtn');
+      const toastEl = document.getElementById('toast');
+
+      /** @type {Array<{id:string,file:File,status:string,url?:string,error?:string,el:HTMLElement}>} */
+      let items = [];
+
+      function showToast(msg, isError) {
+        toastEl.textContent = msg;
+        toastEl.classList.toggle('error', !!isError);
+        toastEl.classList.add('show');
+        clearTimeout(showToast._t);
+        showToast._t = setTimeout(function () { toastEl.classList.remove('show'); }, 3000);
+      }
+
+      function copyText(text) {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          return navigator.clipboard.writeText(text);
+        }
+        return new Promise(function (resolve, reject) {
+          const ta = document.createElement('textarea');
+          ta.value = text;
+          ta.style.position = 'fixed';
+          ta.style.left = '-9999px';
+          document.body.appendChild(ta);
+          ta.select();
+          try {
+            document.execCommand('copy');
+            resolve();
+          } catch (e) {
+            reject(e);
+          }
+          document.body.removeChild(ta);
+        });
+      }
+
+      function flashCopied(btn) {
+        const orig = btn.innerHTML;
+        btn.classList.add('copied');
+        btn.innerHTML = '<i class="fa-solid fa-check"></i> 已复制';
+        setTimeout(function () {
+          btn.classList.remove('copied');
+          btn.innerHTML = orig;
+        }, 1500);
+      }
+
+      function formatSize(bytes) {
+        if (bytes < 1024) return bytes + ' B';
+        if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+      }
+
+      function isImage(file) {
+        return file.type.startsWith('image/');
+      }
+
+      function updateToolbar() {
+        const success = items.filter(function (i) { return i.status === 'success'; }).length;
+        successCountEl.textContent = String(success);
+        totalCountEl.textContent = String(items.length);
+        toolbar.classList.toggle('visible', items.length > 0);
+      }
+
+      function createResultEl(file) {
+        const el = document.createElement('div');
+        el.className = 'result-item uploading';
+
+        const thumb = document.createElement('div');
+        thumb.className = 'result-thumb';
+        if (isImage(file)) {
+          const img = document.createElement('img');
+          img.src = URL.createObjectURL(file);
+          img.alt = file.name;
+          thumb.appendChild(img);
+        } else if (file.type.startsWith('video/')) {
+          thumb.innerHTML = '<i class="fa-solid fa-film"></i>';
+        } else if (file.type.startsWith('audio/')) {
+          thumb.innerHTML = '<i class="fa-solid fa-music"></i>';
+        } else {
+          thumb.innerHTML = '<i class="fa-solid fa-file"></i>';
+        }
+
+        const body = document.createElement('div');
+        body.className = 'result-body';
+
+        const name = document.createElement('div');
+        name.className = 'result-name';
+        name.textContent = file.name + ' (' + formatSize(file.size) + ')';
+
+        const status = document.createElement('div');
+        status.className = 'result-status';
+        status.textContent = '上传中…';
+
+        const urlEl = document.createElement('div');
+        urlEl.className = 'result-url';
+
+        const actions = document.createElement('div');
+        actions.className = 'result-actions';
+
+        body.appendChild(name);
+        body.appendChild(status);
+        body.appendChild(urlEl);
+        body.appendChild(actions);
+        el.appendChild(thumb);
+        el.appendChild(body);
+
+        return { el: el, statusEl: status, urlEl: urlEl, actionsEl: actions };
+      }
+
+      function addCopyButtons(actionsEl, file, url) {
+        actionsEl.innerHTML = '';
+        const formats = [
+          { label: '直链', text: url },
+          { label: 'Markdown', text: '![' + file.name + '](' + url + ')' },
+          { label: 'HTML', text: '<img src="' + url + '" alt="' + file.name.replace(/"/g, '&quot;') + '" />' }
+        ];
+        formats.forEach(function (fmt) {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'btn btn-ghost btn-sm';
+          btn.innerHTML = '<i class="fa-solid fa-copy"></i> ' + fmt.label;
+          btn.addEventListener('click', function () {
+            copyText(fmt.text).then(function () {
+              flashCopied(btn);
+            }).catch(function () {
+              showToast('复制失败，请手动复制', true);
+            });
+          });
+          actionsEl.appendChild(btn);
+        });
+      }
+
+      function setItemState(item, state, extra) {
+        item.status = state;
+        item.el.className = 'result-item ' + state;
+        if (state === 'success' && extra && extra.url) {
+          item.url = extra.url;
+          item.statusEl.textContent = '';
+          item.urlEl.textContent = extra.url;
+          addCopyButtons(item.actionsEl, item.file, extra.url);
+        } else if (state === 'error') {
+          item.statusEl.textContent = extra && extra.error ? extra.error : '上传失败';
+        }
+        updateToolbar();
+      }
+
+      async function uploadOne(item) {
+        setItemState(item, 'uploading');
+        const formData = new FormData();
+        formData.append('file', item.file);
+        try {
+          const res = await fetch(UPLOAD_URL, { method: 'POST', body: formData });
+          const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data.error || data.message || '上传失败');
+          }
+          if (Array.isArray(data) && data[0] && data[0].error) {
+            throw new Error(data[0].error);
+          }
+          const src = Array.isArray(data) ? data[0] && data[0].src : data.src;
+          if (!src) throw new Error('未返回文件路径');
+          const url = location.origin + src;
+          setItemState(item, 'success', { url: url });
+        } catch (err) {
+          setItemState(item, 'error', { error: err.message || '上传失败' });
+        }
+      }
+
+      async function uploadBatch(files) {
+        const valid = [];
+        const invalid = [];
+        files.forEach(function (file) {
+          (file.size <= MAX_SIZE ? valid : invalid).push(file);
+        });
+        if (invalid.length) {
+          showToast(invalid.length + ' 个文件超过 20MB 已跳过', true);
+        }
+        if (!valid.length) return;
+
+        const newItems = valid.map(function (file) {
+          const dom = createResultEl(file);
+          const item = {
+            id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()),
+            file: file,
+            status: 'pending',
+            el: dom.el,
+            statusEl: dom.statusEl,
+            urlEl: dom.urlEl,
+            actionsEl: dom.actionsEl
+          };
+          resultsEl.insertBefore(item.el, resultsEl.firstChild);
+          items.unshift(item);
+          return item;
+        });
+        updateToolbar();
+
+        for (let i = 0; i < newItems.length; i += MAX_CONCURRENT) {
+          await Promise.all(newItems.slice(i, i + MAX_CONCURRENT).map(uploadOne));
+        }
+
+        const ok = newItems.filter(function (i) { return i.status === 'success'; }).length;
+        const fail = newItems.filter(function (i) { return i.status === 'error'; }).length;
+        if (ok) showToast('成功上传 ' + ok + ' 个文件');
+        if (fail && !ok) showToast('全部上传失败', true);
+        else if (fail) showToast(fail + ' 个文件上传失败', true);
+      }
+
+      function handleFiles(fileList) {
+        const files = Array.from(fileList || []);
+        if (!files.length) return;
+        uploadBatch(files);
+      }
+
+      dropzone.addEventListener('click', function () { fileInput.click(); });
+      dropzone.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          fileInput.click();
+        }
+      });
+
+      fileInput.addEventListener('change', function () {
+        handleFiles(fileInput.files);
+        fileInput.value = '';
+      });
+
+      ['dragenter', 'dragover'].forEach(function (ev) {
+        dropzone.addEventListener(ev, function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          dropzone.classList.add('dragover');
+        });
+      });
+
+      ['dragleave', 'drop'].forEach(function (ev) {
+        dropzone.addEventListener(ev, function (e) {
+          e.preventDefault();
+          e.stopPropagation();
+          if (ev === 'drop') {
+            handleFiles(e.dataTransfer.files);
+          }
+          dropzone.classList.remove('dragover');
+        });
+      });
+
+      copyAllBtn.addEventListener('click', function () {
+        const urls = items.filter(function (i) { return i.status === 'success' && i.url; }).map(function (i) { return i.url; });
+        if (!urls.length) {
+          showToast('没有可复制的链接', true);
+          return;
+        }
+        copyText(urls.join('\n')).then(function () {
+          flashCopied(copyAllBtn);
+        }).catch(function () {
+          showToast('复制失败', true);
+        });
+      });
+
+      clearBtn.addEventListener('click', function () {
+        items = [];
+        resultsEl.innerHTML = '';
+        updateToolbar();
+      });
+    })();
+  </script>
+</body>
+</html>
