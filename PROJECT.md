@@ -51,8 +51,7 @@ Telegraph-Image/
 ├── test/pagination.test.js       # KV list 分页测试
 ├── package.json                  # 本地 dev / CI 依赖
 ├── .github/workflows/
-│   ├── ci-test.yml               # PR 跑 mocha
-│   └── sync.yml                  # Fork 定时同步上游
+│   └── ci-test.yml               # PR 跑 mocha
 ├── README.md / README-zh.md
 └── LICENSE
 ```
@@ -189,7 +188,6 @@ npm test    # mocha
 
 - `.gitignore` 未忽略整个 `node_modules`，勿提交依赖目录
 - 首页上传 UI 见 `index.html`（无 `_nuxt` 依赖）
-- Fork 项目可启用 Actions 中的 Upstream Sync 自动跟进上游
 
 ---
 
