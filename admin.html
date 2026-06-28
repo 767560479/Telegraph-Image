@@ -37,36 +37,40 @@
         </div>
       </div>
 
-      <div class="data-table-wrap product-mockup-card-dark" style="padding: 0; background: var(--color-canvas); border-color: var(--color-hairline);">
-        <table class="data-table">
+      <div class="admin-table-toolbar">
+        <input v-model="search" @input="handleSearch" class="text-input admin-table-toolbar__search" type="search" placeholder="输入关键字搜索">
+      </div>
+
+      <div class="data-table-wrap">
+        <table class="data-table data-table--admin">
           <thead>
             <tr>
-              <th>name</th>
-              <th>preview</th>
-              <th>data</th>
-              <th style="min-width: 280px;">
-                <input v-model="search" @input="handleSearch" class="text-input" type="search" placeholder="输入关键字搜索">
-              </th>
+              <th class="data-table__col-name">名称</th>
+              <th class="data-table__col-preview">预览</th>
+              <th class="data-table__col-data">元数据</th>
+              <th class="data-table__col-actions">操作</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="(row, index) in filteredData" :key="row.name">
-              <td>{{ row.name }}</td>
-              <td>
-                <video v-if="row.name.indexOf('.mp4') > 0" style="width: 120px; height: 90px;" controls>
+              <td class="data-table__col-name">
+                <span class="data-table__name" :title="displayName(row)">{{ displayName(row) }}</span>
+              </td>
+              <td class="data-table__col-preview">
+                <video v-if="row.name && row.name.indexOf('.mp4') > 0" class="data-table__preview" controls>
                   <source :src="'/file/' + row.name" type="video/mp4">
                 </video>
-                <img v-else class="data-table__preview" :src="'/file/' + row.name" loading="lazy" :alt="row.name" @click="openLightbox('/file/' + row.name)">
+                <img v-else class="data-table__preview" :src="'/file/' + row.name" loading="lazy" :alt="displayName(row)" @click="openLightbox('/file/' + row.name)">
               </td>
-              <td>
-                <span class="badge-pill" :title="JSON.stringify(row.metadata)">{{ formatMetadata(row.metadata) }}</span>
+              <td class="data-table__col-data">
+                <span class="data-table__meta badge-pill" :title="formatMetadataFull(row.metadata)">{{ formatMetadata(row.metadata) }}</span>
               </td>
-              <td>
+              <td class="data-table__col-actions">
                 <div class="data-table__actions">
-                  <button type="button" class="button-primary button-secondary--sm" @click="handleCopy(index, row.name)">复制地址</button>
-                  <button type="button" class="button-secondary button-secondary--sm" @click="handleWhite(index, row.name)">白名单</button>
-                  <button type="button" class="button-secondary button-secondary--sm" @click="handleBlock(index, row.name)">黑名单</button>
-                  <button type="button" class="button-secondary button-secondary--sm" @click="handleDelete(index, row.name)">删除</button>
+                  <button type="button" class="button-primary button-secondary--sm" @click="handleCopy(row.name)">复制地址</button>
+                  <button type="button" class="button-secondary button-secondary--sm" @click="handleWhite(row.name)">白名单</button>
+                  <button type="button" class="button-secondary button-secondary--sm" @click="handleBlock(row.name)">黑名单</button>
+                  <button type="button" class="button-secondary button-secondary--sm" @click="handleDelete(row.name)">删除</button>
                 </div>
               </td>
             </tr>
@@ -94,12 +98,6 @@
   <script src="./assets/js/admin-ui.js"></script>
   <script>
     AdminUI.installVue(Vue);
-    Array.prototype.remove = function (from, to) {
-      var rest = this.slice((to || from) + 1 || this.length);
-      this.length = from < 0 ? this.length + from : from;
-      return this.push.apply(this, rest);
-    };
-
     new Vue({
       el: '#app',
       data: {
@@ -115,38 +113,82 @@
         filteredData() {
           if (!this.search) return this.tableData;
           const q = this.search.toLowerCase();
-          return this.tableData.filter(data => data.name.toLowerCase().includes(q));
+          return this.tableData.filter(function (data) {
+            var meta = data.metadata || {};
+            var fileName = (meta.fileName || '').toLowerCase();
+            var name = (data.name || '').toLowerCase();
+            return name.includes(q) || fileName.includes(q);
+          });
         }
       },
       methods: {
         openLightbox(url) { this.lightboxUrl = url; },
-        formatMetadata(meta) {
-          if (typeof meta === 'string') return meta.length > 40 ? meta.slice(0, 40) + '…' : meta;
-          return JSON.stringify(meta).slice(0, 40) + '…';
+        parseMetadata(meta) {
+          if (!meta) return {};
+          if (typeof meta === 'string') {
+            try { return JSON.parse(meta); } catch (e) { return {}; }
+          }
+          return meta;
         },
-        handleBlock(index, key) {
+        normalizeKeys(keys) {
+          return (keys || []).map(function (k) {
+            return {
+              name: k.name,
+              metadata: typeof k.metadata === 'object' && k.metadata !== null ? k.metadata : {}
+            };
+          });
+        },
+        displayName(row) {
+          if (!row) return '—';
+          var meta = this.parseMetadata(row.metadata);
+          return meta.fileName || row.name || '—';
+        },
+        formatMetadata(meta) {
+          var obj = this.parseMetadata(meta);
+          var text = JSON.stringify(obj);
+          return text.length > 48 ? text.slice(0, 48) + '…' : text;
+        },
+        formatMetadataFull(meta) {
+          return JSON.stringify(this.parseMetadata(meta));
+        },
+        findRowIndex(key) {
+          return this.tableData.findIndex(function (r) { return r.name === key; });
+        },
+        handleBlock(key) {
           if (!confirm('确认加入黑名单吗?')) return;
           fetch('./api/manage/block/' + key, { method: 'GET', credentials: 'include' })
-            .then(response => response.text())
-            .then(result => { this.tableData[index].metadata = result; })
-            .catch(() => alert('同步失败，请检查网络连接'));
+            .then(function (response) { return response.text(); })
+            .then(function (result) {
+              var idx = this.findRowIndex(key);
+              if (idx !== -1) this.tableData[idx].metadata = this.parseMetadata(result);
+            }.bind(this))
+            .catch(function () { alert('同步失败，请检查网络连接'); });
         },
-        handleDelete(index, key) {
+        handleDelete(key) {
           if (!confirm('确认删除该条记录吗?')) return;
           fetch('./api/manage/delete/' + key, { method: 'GET', credentials: 'include' })
-            .then(response => response.text())
-            .then(() => { this.tableData.remove(index); this.Number = this.tableData.length; })
-            .catch(() => alert('同步失败，请检查网络连接'));
+            .then(function (response) { return response.text(); })
+            .then(function () {
+              var idx = this.findRowIndex(key);
+              if (idx !== -1) {
+                this.tableData.splice(idx, 1);
+                this.Number = this.tableData.length;
+              }
+            }.bind(this))
+            .catch(function () { alert('同步失败，请检查网络连接'); });
         },
-        handleWhite(index, key) {
+        handleWhite(key) {
           if (!confirm('确认加入白名单吗?')) return;
           fetch('./api/manage/white/' + key, { method: 'GET', credentials: 'include' })
-            .then(response => response.text())
-            .then(result => { this.tableData[index].metadata = result; })
-            .catch(() => alert('同步失败，请检查网络连接'));
+            .then(function (response) { return response.text(); })
+            .then(function (result) {
+              var idx = this.findRowIndex(key);
+              if (idx !== -1) this.tableData[idx].metadata = this.parseMetadata(result);
+            }.bind(this))
+            .catch(function () { alert('同步失败，请检查网络连接'); });
         },
         handleLogout() { window.location.href = './api/manage/logout'; },
-        handleCopy(index, key) {
+        handleCopy(key) {
           const text = document.location.origin + '/file/' + key;
           if (navigator.clipboard) {
             navigator.clipboard.writeText(text);
@@ -174,7 +216,7 @@
             fetch(base, { method: 'GET', credentials: 'include' })
               .then(r => r.json())
               .then(result => {
-                this.tableData = result.keys || [];
+                this.tableData = this.normalizeKeys(result.keys);
                 this.nextCursor = result.list_complete ? null : result.cursor;
                 this.Number = this.tableData.length;
               })
@@ -189,7 +231,7 @@
           fetch(url, { method: 'GET', credentials: 'include' })
             .then(r => r.json())
             .then(result => {
-              this.tableData = this.tableData.concat(result.keys || []);
+              this.tableData = this.tableData.concat(this.normalizeKeys(result.keys));
               this.nextCursor = result.list_complete ? null : result.cursor;
               this.Number = this.tableData.length;
             })
@@ -216,7 +258,7 @@
           })
           .then(result => {
             if (!result) return;
-            this.tableData = result.keys || [];
+            this.tableData = this.normalizeKeys(result.keys);
             this.nextCursor = result.list_complete ? null : result.cursor;
             this.Number = this.tableData.length;
           })

@@ -31,6 +31,7 @@
   </main>
 
   <div id="bigimg" class="lightbox" onclick="closeBigImg();"></div>
+  <div class="toast" id="toast" role="status"></div>
 
   <footer class="site-footer">
     <div class="container site-footer__inner">
@@ -41,6 +42,77 @@
   <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.4/dist/jquery.min.js"></script>
   <script>
     var cursor = null;
+    var itemWidth = 200;
+
+    function showToast(msg) {
+      var el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.add('show');
+      clearTimeout(showToast._t);
+      showToast._t = setTimeout(function () { el.classList.remove('show'); }, 2500);
+    }
+
+    function fileUrl(name) {
+      return location.origin + '/file/' + name;
+    }
+
+    function copyUrl(name) {
+      var text = fileUrl(name);
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(function () { showToast('链接已复制'); });
+      } else {
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        showToast('链接已复制');
+      }
+    }
+
+    function openPreview(name) {
+      var bigImg = document.getElementById('bigimg');
+      bigImg.innerHTML = '<img src="/file/' + name + '" alt="preview">';
+      bigImg.classList.add('is-open');
+    }
+
+    function deleteFile(name) {
+      if (!confirm('确认删除该条记录吗?')) return;
+      fetch('./api/manage/delete/' + name, { method: 'GET', credentials: 'include' })
+        .then(function (r) {
+          if (!r.ok) throw new Error('fail');
+          $('.waterfall-item').filter(function () {
+            return decodeURIComponent($(this).attr('data-name') || '') === name;
+          }).remove();
+          waterfallHandler();
+          showToast('删除成功');
+        })
+        .catch(function () { alert('删除失败，请检查网络'); });
+    }
+
+    function itemNameFromEl(el) {
+      return decodeURIComponent($(el).closest('.waterfall-item').attr('data-name') || '');
+    }
+
+    $(document).on('click', '.js-wf-copy', function (e) {
+      e.stopPropagation();
+      copyUrl(itemNameFromEl(this));
+    });
+    $(document).on('click', '.js-wf-preview', function (e) {
+      e.stopPropagation();
+      openPreview(itemNameFromEl(this));
+    });
+    $(document).on('click', '.js-wf-delete', function (e) {
+      e.stopPropagation();
+      deleteFile(itemNameFromEl(this));
+    });
+    $(document).on('click', '.waterfall-item img', function () {
+      openPreview(itemNameFromEl(this));
+    });
+
     function loadMore() {
       $.ajax({
         url: cursor ? './api/manage/list?cursor=' + encodeURIComponent(cursor) : './api/manage/list?limit=100',
@@ -49,13 +121,21 @@
         success: function (data) {
           cursor = data.list_complete ? null : data.cursor;
           var images = data.keys || [];
-          var targetElement = document.querySelector('.box');
-          var str = '';
+          var html = '';
           for (var i = 0; i < images.length; i++) {
-            if (images[i].name.indexOf('.mp4') > 0) continue;
-            str += '<img onclick="showBigImg(this)" data-original="/file/' + images[i].name + '" src="/file/' + images[i].name + '" alt="">';
+            var name = images[i].name;
+            if (!name || name.indexOf('.mp4') > 0) continue;
+            var enc = encodeURIComponent(name);
+            html +=
+              '<div class="waterfall-item" data-name="' + enc + '">' +
+              '<img src="/file/' + name + '" alt="">' +
+              '<div class="waterfall-item__overlay">' +
+              '<button type="button" class="button-primary button-secondary--sm js-wf-copy">复制</button>' +
+              '<button type="button" class="button-secondary button-secondary--sm js-wf-preview">预览</button>' +
+              '<button type="button" class="button-secondary button-secondary--sm js-wf-delete">删除</button>' +
+              '</div></div>';
           }
-          targetElement.insertAdjacentHTML('beforeend', str);
+          document.querySelector('.box').insertAdjacentHTML('beforeend', html);
           if (!cursor) document.getElementById('loadMore').style.display = 'none';
           waterfallHandler();
         },
@@ -64,33 +144,21 @@
     }
 
     function waterfallHandler() {
-      var imgWidth = 200;
-      var column = Math.max(1, parseInt($(window).width() / imgWidth, 10));
+      var column = Math.max(1, parseInt(($(window).width() - 32) / itemWidth, 10));
       var heightArr = [];
       for (var i = 0; i < column; i++) heightArr[i] = 0;
-      $.each($('.box img'), function (index, item) {
-        var itemHeight = $(item).outerHeight();
+      $.each($('.waterfall-item'), function (_, item) {
+        var h = $(item).outerHeight();
         var minHeight = Math.min.apply(null, heightArr);
         var minIndex = heightArr.indexOf(minHeight);
-        $(item).css({
-          position: 'absolute',
-          top: minHeight + 'px',
-          left: minIndex * imgWidth + 'px'
-        });
-        heightArr[minIndex] += itemHeight;
+        $(item).css({ top: minHeight + 'px', left: minIndex * itemWidth + 'px' });
+        heightArr[minIndex] += h;
       });
-      var maxH = Math.max.apply(null, heightArr);
+      var maxH = Math.max.apply(null, heightArr.concat([0]));
       $('.box').css('height', maxH + 'px');
     }
 
     $(window).resize(function () { waterfallHandler(); });
-
-    function showBigImg(img) {
-      var bigImg = document.getElementById('bigimg');
-      var imgUrl = img.getAttribute('data-original');
-      bigImg.innerHTML = '<img src="' + imgUrl + '" alt="preview">';
-      bigImg.classList.add('is-open');
-    }
 
     function closeBigImg() {
       var bigImg = document.getElementById('bigimg');
