@@ -1,33 +1,49 @@
 <!DOCTYPE html>
-<html class="no-js" lang="en-US" style="
-    height: 100%;
-">
+<html lang="zh-CN">
 <head>
-<title>WhiteList Mode is ON| Telegraph-Image</title>
-<meta charset="UTF-8">
-<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-<meta http-equiv="X-UA-Compatible" content="IE=Edge">
-<meta name="robots" content="noindex, nofollow">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<script src="https://js.sentry-cdn.com/219f636ac7bde5edab2c3e16885cb535.min.js" crossorigin="anonymous"></script>
-<style>body{margin:0;padding:0}</style>
-
-
+  <title>白名单模式已开启 | Telegraph-Image</title>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./assets/css/tokens.css">
+  <link rel="stylesheet" href="./assets/css/base.css">
+  <link rel="stylesheet" href="./assets/css/components.css">
+  <link rel="stylesheet" href="./assets/css/pages/index.css">
+  <script src="https://js.sentry-cdn.com/219f636ac7bde5edab2c3e16885cb535.min.js" crossorigin="anonymous"></script>
 </head>
-<body style="
-    height: 100%;
-">
-    <div style="display: flex;flex-direction: column;align-content: center;justify-content: center;align-items: center;height: 100%;text-align: center;">
-<div>
-    抱歉，当前已开启白名单模式，上传的图片需要审核通过后才能展示，请等待审核通过后再进行访问。
-    <br>
-    Sorry, the whitelist mode is currently enabled, the uploaded images need to be audited before they can be displayed, please wait for the audit to be passed before visiting.
-</div>
-<br>
-<div>Powered By: <span><a style="
-    color: cornflowerblue;"
-    href="https://github.com/cf-pages/Telegraph-Image">Telegraph-Image</a></span></div>
-</div>
+<body>
+  <nav class="top-nav">
+    <div class="top-nav__inner">
+      <a href="/" class="top-nav__brand">Telegraph-<span>Image</span></a>
+      <div class="top-nav__actions">
+        <a href="/" class="button-primary">返回首页</a>
+      </div>
+    </div>
+  </nav>
 
+  <main class="page-body status-page">
+    <article class="feature-card">
+      <h1>白名单模式</h1>
+      <p>抱歉，当前已开启白名单模式，上传的图片需要审核通过后才能展示，请等待审核通过后再进行访问。</p>
+      <p class="text-muted">Sorry, the whitelist mode is currently enabled. Uploaded images need to be audited before they can be displayed. Please wait for approval before visiting.</p>
+      <p style="margin-top: var(--spacing-lg);">
+        <a href="/" class="button-primary">返回首页</a>
+      </p>
+    </article>
+  </main>
 
-</body></html>
+  <footer class="site-footer">
+    <div class="container site-footer__inner">
+      <p>
+        Powered By
+        <a href="https://github.com/cf-pages/Telegraph-Image" target="_blank" rel="noopener noreferrer">Telegraph-Image</a>
+      </p>
+    </div>
+  </footer>
+</body>
+</html>

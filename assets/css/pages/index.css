@@ -1,0 +1,215 @@
+.upload-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.dropzone {
+  border: 2px dashed var(--color-hairline);
+  border-radius: var(--rounded-lg);
+  padding: var(--spacing-xxl) var(--spacing-lg);
+  text-align: center;
+  cursor: pointer;
+  background: var(--color-canvas);
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.dropzone.dragover {
+  border-color: var(--color-primary);
+  background: var(--color-surface-soft);
+}
+
+.dropzone .icon {
+  font-size: 2.5rem;
+  color: var(--color-primary);
+  margin-bottom: var(--spacing-sm);
+}
+
+.dropzone .title {
+  font-size: var(--text-title-sm);
+  font-weight: 500;
+  color: var(--color-ink);
+  margin-bottom: var(--spacing-xs);
+}
+
+.dropzone .hint {
+  font-size: var(--text-body-sm);
+  color: var(--color-muted);
+}
+
+.dropzone .hint span {
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+#fileInput {
+  display: none;
+}
+
+.upload-toolbar {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-lg);
+  padding-top: var(--spacing-lg);
+  border-top: 1px solid var(--color-hairline);
+}
+
+.upload-toolbar.visible {
+  display: flex;
+}
+
+.upload-toolbar__meta {
+  font-size: var(--text-body-sm);
+  color: var(--color-muted);
+}
+
+.upload-toolbar__meta strong {
+  color: var(--color-ink);
+}
+
+.upload-toolbar__actions {
+  display: flex;
+  gap: var(--spacing-xs);
+  flex-wrap: wrap;
+}
+
+.upload-results {
+  margin-top: var(--spacing-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.result-item {
+  display: flex;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--color-surface-soft);
+  border-radius: var(--rounded-lg);
+  border: 1px solid var(--color-hairline-soft);
+  align-items: flex-start;
+}
+
+.result-thumb {
+  flex-shrink: 0;
+  width: 64px;
+  height: 64px;
+  border-radius: var(--rounded-md);
+  overflow: hidden;
+  background: var(--color-surface-card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  color: var(--color-muted);
+}
+
+.result-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.result-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.result-name {
+  font-size: var(--text-body-sm);
+  font-weight: 500;
+  color: var(--color-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: var(--spacing-xxs);
+}
+
+.result-url {
+  font-size: var(--text-body-sm);
+  font-family: var(--font-mono);
+  color: var(--color-muted);
+  word-break: break-all;
+  margin-bottom: var(--spacing-xs);
+  display: none;
+}
+
+.result-item.success .result-url {
+  display: block;
+}
+
+.result-status {
+  font-size: var(--text-body-sm);
+  color: var(--color-muted);
+}
+
+.result-item.uploading .result-status {
+  color: var(--color-primary);
+}
+
+.result-item.error .result-status {
+  color: var(--color-error);
+}
+
+.result-item.success .result-status {
+  display: none;
+}
+
+.result-actions {
+  display: none;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+  margin-top: var(--spacing-xs);
+}
+
+.result-item.success .result-actions {
+  display: flex;
+}
+
+.status-page {
+  min-height: calc(100vh - var(--nav-height));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xxl) var(--spacing-lg);
+  text-align: center;
+}
+
+.status-page .feature-card {
+  max-width: 560px;
+  margin-bottom: var(--spacing-xl);
+}
+
+.status-page h1 {
+  font-size: var(--text-display-sm);
+  margin-bottom: var(--spacing-md);
+}
+
+.status-page p {
+  color: var(--color-body);
+  line-height: 1.6;
+  margin-bottom: var(--spacing-sm);
+}
+
+@media (max-width: 480px) {
+  .hero-illustration-card {
+    padding: var(--spacing-md);
+  }
+
+  .dropzone {
+    padding: var(--spacing-xl) var(--spacing-md);
+  }
+
+  .result-item {
+    flex-direction: column;
+  }
+
+  .result-thumb {
+    width: 100%;
+    height: 120px;
+  }
+}
