@@ -40,6 +40,7 @@
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.4/dist/jquery.min.js"></script>
+  <script src="./assets/js/admin-auth.js"></script>
   <script>
     var cursor = null;
     var ITEM_WIDTH = 200;
@@ -203,7 +204,13 @@
           whenImagesReady($added, layoutWaterfall);
           if (!cursor) $('#loadMore').hide();
         },
-        error: function () { alert('同步失败，请检查网络'); }
+        error: function (xhr) {
+          if (xhr && xhr.status === 401) {
+            AdminAuth.redirectToLogin();
+            return;
+          }
+          alert('同步失败，请检查网络');
+        }
       });
     }
 
@@ -214,7 +221,13 @@
     });
 
     $('#loadMore').on('click', loadMore);
-    loadMore();
+    AdminAuth.ensureAuth().then(function (auth) {
+      if (auth.enabled && !auth.authenticated) {
+        AdminAuth.redirectToLogin();
+        return;
+      }
+      loadMore();
+    });
   </script>
 </body>
 </html>

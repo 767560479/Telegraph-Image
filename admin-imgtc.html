@@ -206,6 +206,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.min.js"></script>
   <script src="./assets/js/admin-ui.js"></script>
+  <script src="./assets/js/admin-auth.js"></script>
   <script>
     AdminUI.installVue(Vue);
     new Vue({
@@ -314,7 +315,7 @@
         },
         openLightbox(url) { this.lightboxUrl = url; },
         refreshDashboard() { location.reload(); },
-        handleLogout() { window.location.href = '/'; },
+        handleLogout() { AdminAuth.logout(); },
         handlePageChange(page) {
           if (page < 1 || page > this.totalPages) return;
           this.currentPage = page;
@@ -654,35 +655,47 @@
               })
               .catch(() => this.$message.error('修改文件名时出错，请检查网络连接'));
           }).catch(() => {});
+        },
+        loadInitialList() {
+          fetch('./api/manage/list?limit=100', { method: 'GET', credentials: 'include' })
+            .then(response => {
+              if (response.status === 401) {
+                AdminAuth.redirectToLogin();
+                return null;
+              }
+              return response.json();
+            })
+            .then(result => {
+              if (!result) return;
+              const files = result.keys || [];
+              this.nextCursor = result.list_complete ? null : result.cursor;
+              this.tableData = files.map(file => ({
+                ...file, selected: false,
+                metadata: { ...file.metadata, liked: file.metadata.liked ?? false, fileName: file.metadata.fileName ?? file.name, fileSize: file.metadata.fileSize ?? 0 }
+              }));
+              this.updateStats();
+              this.sortOption = localStorage.getItem('sortOption') || this.sortOption;
+              this.sortData(this.tableData);
+              this.fileType = localStorage.getItem('fileType') || this.fileType;
+              this.switchFileType(this.fileType);
+            })
+            .catch(() => this.$message.error('同步数据时出错，请检查网络连接'));
         }
       },
       mounted() {
         window.addEventListener('resize', this.calculatePageSize);
         this.updateWindowWidth();
         document.addEventListener('click', () => { this.activePopover = null; });
-        fetch('./api/manage/check', { method: 'GET', credentials: 'include' })
-          .then(response => response.text())
-          .then(result => { if (result !== 'true') window.location.href = './api/manage/login'; })
-          .catch(() => this.$message.error('同步数据时出错，请检查网络连接'));
-        fetch('./api/manage/list?limit=100', { method: 'GET', credentials: 'include' })
-          .then(response => response.json())
-          .then(result => {
-            const files = result.keys || [];
-            this.nextCursor = result.list_complete ? null : result.cursor;
-            this.tableData = files.map(file => ({
-              ...file, selected: false,
-              metadata: { ...file.metadata, liked: file.metadata.liked ?? false, fileName: file.metadata.fileName ?? file.name, fileSize: file.metadata.fileSize ?? 0 }
-            }));
-            this.updateStats();
-            this.sortOption = localStorage.getItem('sortOption') || this.sortOption;
-            this.sortData(this.tableData);
-            this.fileType = localStorage.getItem('fileType') || this.fileType;
-            this.switchFileType(this.fileType);
-          })
-          .catch(() => this.$message.error('同步数据时出错，请检查网络连接'));
         if (localStorage.getItem('quickWebsites')) {
           this.quickWebsites = JSON.parse(localStorage.getItem('quickWebsites'));
         }
+        AdminAuth.ensureAuth().then((auth) => {
+          if (auth.enabled && !auth.authenticated) {
+            AdminAuth.redirectToLogin();
+            return;
+          }
+          this.loadInitialList();
+        }).catch(() => this.$message.error('同步数据时出错，请检查网络连接'));
       },
       beforeDestroy() {
         window.removeEventListener('resize', this.calculatePageSize);

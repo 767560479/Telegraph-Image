@@ -69,6 +69,8 @@ Pages → **Custom domains** → 添加已在 Cloudflare 托管的域名。
 
 未设置则 `/api/manage/*` 无 Basic 鉴权（可配合 [Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/policies/access/) 保护 `/admin` 与 `/api/manage/*`）。
 
+已设置时，访问后台会进入 [`login.html`](login.html) 自定义登录页（不再弹出浏览器原生 Basic Auth 对话框）；`curl -u 用户名:密码` 等方式仍可调用 API。
+
 ### 内容审查（可选）
 
 环境变量 `ModerateContentApiKey`：在 [moderatecontent.com](https://moderatecontent.com/) 申请 API Key。

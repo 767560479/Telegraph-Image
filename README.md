@@ -69,6 +69,8 @@ Pages → **Custom domains** → add a domain already on Cloudflare.
 
 If unset, `/api/manage/*` has no Basic auth (you can use [Cloudflare Access](https://developers.cloudflare.com/cloudflare-one/policies/access/) for `/admin` and `/api/manage/*`).
 
+When set, admin pages use the custom [`login.html`](login.html) sign-in page instead of the browser’s native Basic Auth dialog; API access via `curl -u user:pass` still works.
+
 ### Content moderation (optional)
 
 Set `ModerateContentApiKey` from [moderatecontent.com](https://moderatecontent.com/).

@@ -96,6 +96,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.min.js" crossorigin="anonymous"></script>
   <script src="./assets/js/admin-ui.js"></script>
+  <script src="./assets/js/admin-auth.js"></script>
   <script>
     AdminUI.installVue(Vue);
     new Vue({
@@ -187,7 +188,7 @@
             }.bind(this))
             .catch(function () { alert('同步失败，请检查网络连接'); });
         },
-        handleLogout() { window.location.href = './api/manage/logout'; },
+        handleLogout() { AdminAuth.logout(); },
         handleCopy(key) {
           const text = document.location.origin + '/file/' + key;
           if (navigator.clipboard) {
@@ -236,33 +237,34 @@
               this.Number = this.tableData.length;
             })
             .catch(() => alert('同步失败，请检查网络'));
+        },
+        loadInitialList() {
+          fetch('./api/manage/list?limit=100', { method: 'GET', credentials: 'include' })
+            .then(function (response) {
+              if (response.status === 401) {
+                AdminAuth.redirectToLogin();
+                return null;
+              }
+              return response.json();
+            })
+            .then(function (result) {
+              if (!result) return;
+              this.tableData = this.normalizeKeys(result.keys);
+              this.nextCursor = result.list_complete ? null : result.cursor;
+              this.Number = this.tableData.length;
+            }.bind(this))
+            .catch(function () { alert('同步失败，请检查网络连接'); });
         }
       },
       mounted() {
-        fetch('./api/manage/check', { method: 'GET', credentials: 'include' })
-          .then(response => response.text())
-          .then(result => {
-            if (result === 'true') this.showLogoutButton = true;
-            else if (result !== 'Not using basic auth.') window.location.href = './api/manage/login';
-          })
-          .catch(() => alert('同步失败，请检查网络连接'));
-
-        fetch('./api/manage/list?limit=100', { method: 'GET', credentials: 'include' })
-          .then(response => {
-            if (response.status === 401) {
-              alert('请先登录');
-              window.location.href = './api/manage/login';
-              return null;
-            }
-            return response.json();
-          })
-          .then(result => {
-            if (!result) return;
-            this.tableData = this.normalizeKeys(result.keys);
-            this.nextCursor = result.list_complete ? null : result.cursor;
-            this.Number = this.tableData.length;
-          })
-          .catch(() => alert('同步失败，请检查网络连接'));
+        AdminAuth.ensureAuth().then(function (auth) {
+          if (auth.enabled) this.showLogoutButton = true;
+          if (auth.enabled && !auth.authenticated) {
+            AdminAuth.redirectToLogin();
+            return;
+          }
+          this.loadInitialList();
+        }.bind(this)).catch(function () { alert('同步失败，请检查网络连接'); });
       }
     });
   </script>

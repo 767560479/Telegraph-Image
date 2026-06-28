@@ -1,0 +1,110 @@
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-canvas);
+}
+
+.login-page__main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--spacing-xl) var(--spacing-lg);
+}
+
+.login-card {
+  width: 100%;
+  max-width: 420px;
+  padding: var(--spacing-xl);
+  background: var(--color-surface-card);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--rounded-lg);
+}
+
+.login-card__title {
+  font-family: var(--font-display);
+  font-size: var(--text-display-sm);
+  font-weight: 400;
+  color: var(--color-ink);
+  margin: 0 0 var(--spacing-xs);
+  letter-spacing: -0.3px;
+}
+
+.login-card__subtitle {
+  color: var(--color-muted);
+  font-size: var(--text-body-sm);
+  margin: 0 0 var(--spacing-xl);
+}
+
+.login-form__field {
+  margin-bottom: var(--spacing-md);
+}
+
+.login-form__label {
+  display: block;
+  font-size: var(--text-body-sm);
+  font-weight: 500;
+  color: var(--color-body);
+  margin-bottom: var(--spacing-xs);
+}
+
+.login-form__password-wrap {
+  position: relative;
+}
+
+.login-form__password-wrap .text-input {
+  padding-right: 2.75rem;
+}
+
+.login-form__toggle-pw {
+  position: absolute;
+  right: 0.625rem;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  padding: var(--spacing-xs);
+  line-height: 1;
+}
+
+.login-form__toggle-pw:hover {
+  color: var(--color-ink);
+}
+
+.login-form__error {
+  display: none;
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--rounded-md);
+  background: rgba(198, 69, 69, 0.08);
+  border: 1px solid rgba(198, 69, 69, 0.25);
+  color: var(--color-error);
+  font-size: var(--text-body-sm);
+}
+
+.login-form__error.is-visible {
+  display: block;
+}
+
+.login-form__submit {
+  width: 100%;
+  margin-top: var(--spacing-sm);
+}
+
+.login-form__submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.login-card__footer {
+  margin-top: var(--spacing-lg);
+  text-align: center;
+}
+
+.login-page.is-loading .login-card {
+  opacity: 0.6;
+  pointer-events: none;
+}

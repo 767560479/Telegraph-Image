@@ -11,23 +11,15 @@ async function errorHandling(context) {
   
     const [scheme, encoded] = Authorization.split(' ');
   
-    // The Authorization header must start with Basic, followed by a space.
     if (!encoded || scheme !== 'Basic') {
       throw new BadRequestException('Malformed authorization header.');
     }
   
-    // Decodes the base64 value and performs unicode normalization.
-    // @see https://datatracker.ietf.org/doc/html/rfc7613#section-3.3.2 (and #section-4.2.2)
-    // @see https://dev.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String/normalize
     const buffer = Uint8Array.from(atob(encoded), character => character.charCodeAt(0));
     const decoded = new TextDecoder().decode(buffer).normalize();
   
-    // The username & password are split by the first colon.
-    //=> example: "username:password"
     const index = decoded.indexOf(':');
   
-    // The user & password are split by the first colon and MUST NOT contain control characters.
-    // @see https://tools.ietf.org/html/rfc5234#appendix-B.1 (=> "CTL = %x00-1F / %x7F")
     if (index === -1 || /[\0-\x1F\x7F]/.test(decoded)) {
       throw new BadRequestException('Invalid authorization value.');
     }
@@ -37,6 +29,37 @@ async function errorHandling(context) {
       pass: decoded.substring(index + 1),
     };
   }
+
+  function parseCookieAuth(request) {
+    const cookie = request.headers.get('Cookie');
+    if (!cookie) return null;
+
+    const match = cookie.match(/\badmin_auth=([^;]+)/);
+    if (!match) return null;
+
+    try {
+      const buffer = Uint8Array.from(atob(match[1]), character => character.charCodeAt(0));
+      const decoded = new TextDecoder().decode(buffer).normalize();
+      const index = decoded.indexOf(':');
+      if (index === -1 || /[\0-\x1F\x7F]/.test(decoded)) return null;
+      return {
+        user: decoded.substring(0, index),
+        pass: decoded.substring(index + 1),
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  function credentialsValid(env, user, pass) {
+    return env.BASIC_USER === user && env.BASIC_PASS === pass;
+  }
+
+  function isPublicRoute(pathname, method) {
+    if (pathname === '/api/manage/check' && method === 'GET') return true;
+    if (pathname === '/api/manage/login') return true;
+    return false;
+  }
   
   function UnauthorizedException(reason) {
     return new Response(reason, {
@@ -44,9 +67,7 @@ async function errorHandling(context) {
         statusText: 'Unauthorized',
         headers: {
           'Content-Type': 'text/plain;charset=UTF-8',
-          // Disables caching by default.
           'Cache-Control': 'no-store',
-          // Returns the "Content-Length" header for HTTP HEAD requests.
           'Content-Length': reason.length,
         },
       });
@@ -58,9 +79,7 @@ async function errorHandling(context) {
         statusText: 'Bad Request',
         headers: {
           'Content-Type': 'text/plain;charset=UTF-8',
-          // Disables caching by default.
           'Cache-Control': 'no-store',
-          // Returns the "Content-Length" header for HTTP HEAD requests.
           'Content-Length': reason.length,
         },
       });
@@ -68,39 +87,39 @@ async function errorHandling(context) {
   
   
   function authentication(context) {
-    //context.env.BASIC_USER="admin"
-    //context.env.BASIC_PASS="admin"
-    //check if the env variables Disable_Dashboard are set
     if (typeof context.env.img_url == "undefined" || context.env.img_url == null || context.env.img_url == "") {
         return new Response('Dashboard is disabled. Please bind a KV namespace to use this feature.', { status: 200 });
     }
 
-    console.log(context.env.BASIC_USER)
+    const url = new URL(context.request.url);
+    if (isPublicRoute(url.pathname, context.request.method)) {
+      return context.next();
+    }
+
     if(typeof context.env.BASIC_USER == "undefined" || context.env.BASIC_USER == null || context.env.BASIC_USER == ""){
         return context.next();
-    }else{
-        if (context.request.headers.has('Authorization')) {
-            // Throws exception when authorization fails.
-            const { user, pass } = basicAuthentication(context.request);
-            
-                          
-                if (context.env.BASIC_USER !== user || context.env.BASIC_PASS !== pass) {
-                    return UnauthorizedException('Invalid credentials.');
-                }else{
-                    return context.next();
-                }
-            
-        } else {
-            return new Response('You need to login.', {
-                status: 401,
-                headers: {
-                // Prompts the user for credentials.
-                'WWW-Authenticate': 'Basic realm="my scope", charset="UTF-8"',
-                },
-            });
+    }
+
+    if (context.request.headers.has('Authorization')) {
+        const { user, pass } = basicAuthentication(context.request);
+        if (credentialsValid(context.env, user, pass)) {
+            return context.next();
         }
-    }  
-    
+        return UnauthorizedException('Invalid credentials.');
+    }
+
+    const cookieAuth = parseCookieAuth(context.request);
+    if (cookieAuth && credentialsValid(context.env, cookieAuth.user, cookieAuth.pass)) {
+        return context.next();
+    }
+
+    return new Response('You need to login.', {
+        status: 401,
+        headers: {
+          'Content-Type': 'text/plain;charset=UTF-8',
+          'Cache-Control': 'no-store',
+        },
+    });
   }
   
   export const onRequest = [errorHandling, authentication];

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>后台登录 | Telegraph-Image</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
+  <link rel="stylesheet" href="./assets/css/tokens.css">
+  <link rel="stylesheet" href="./assets/css/base.css">
+  <link rel="stylesheet" href="./assets/css/components.css">
+  <link rel="stylesheet" href="./assets/css/pages/login.css">
+</head>
+<body class="login-page is-loading">
+  <nav class="top-nav">
+    <div class="top-nav__inner">
+      <a href="/" class="top-nav__brand">Telegraph-<span>Image</span></a>
+      <div class="top-nav__actions">
+        <a href="/" class="button-text-link">返回首页</a>
+      </div>
+    </div>
+  </nav>
+
+  <main class="login-page__main">
+    <article class="login-card">
+      <h1 class="login-card__title">后台登录</h1>
+      <p class="login-card__subtitle">请输入管理员账号以访问 Dashboard</p>
+
+      <div id="loginError" class="login-form__error" role="alert"></div>
+
+      <form id="loginForm" class="login-form" novalidate>
+        <div class="login-form__field">
+          <label class="login-form__label" for="username">用户名</label>
+          <input id="username" name="username" class="text-input" type="text" autocomplete="username" required>
+        </div>
+        <div class="login-form__field">
+          <label class="login-form__label" for="password">密码</label>
+          <div class="login-form__password-wrap">
+            <input id="password" name="password" class="text-input" type="password" autocomplete="current-password" required>
+            <button type="button" class="login-form__toggle-pw" id="togglePassword" aria-label="显示密码">
+              <i class="fa-regular fa-eye"></i>
+            </button>
+          </div>
+        </div>
+        <button type="submit" class="button-primary login-form__submit" id="loginSubmit">登录</button>
+      </form>
+
+      <p class="login-card__footer">
+        <a href="/" class="button-text-link">返回首页</a>
+      </p>
+    </article>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container site-footer__inner">
+      <p>Powered By <a href="https://github.com/cf-pages/Telegraph-Image" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-github"></i> Telegraph-Image</a></p>
+    </div>
+  </footer>
+
+  <script src="./assets/js/admin-auth.js"></script>
+  <script>
+    (function () {
+      var params = new URLSearchParams(location.search);
+      var nextUrl = AdminAuth.safeNext(params.get('next'));
+      var form = document.getElementById('loginForm');
+      var errorEl = document.getElementById('loginError');
+      var submitBtn = document.getElementById('loginSubmit');
+      var passwordInput = document.getElementById('password');
+      var toggleBtn = document.getElementById('togglePassword');
+
+      function showError(msg) {
+        errorEl.textContent = msg;
+        errorEl.classList.add('is-visible');
+      }
+
+      function hideError() {
+        errorEl.textContent = '';
+        errorEl.classList.remove('is-visible');
+      }
+
+      function goNext() {
+        location.href = nextUrl;
+      }
+
+      function setLoading(loading) {
+        document.body.classList.toggle('is-loading', loading);
+        submitBtn.disabled = loading;
+      }
+
+      toggleBtn.addEventListener('click', function () {
+        var isPassword = passwordInput.type === 'password';
+        passwordInput.type = isPassword ? 'text' : 'password';
+        toggleBtn.innerHTML = isPassword
+          ? '<i class="fa-regular fa-eye-slash"></i>'
+          : '<i class="fa-regular fa-eye"></i>';
+        toggleBtn.setAttribute('aria-label', isPassword ? '隐藏密码' : '显示密码');
+      });
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        hideError();
+        var user = document.getElementById('username').value.trim();
+        var pass = passwordInput.value;
+        if (!user || !pass) {
+          showError('请输入用户名和密码');
+          return;
+        }
+        setLoading(true);
+        fetch('./api/manage/login', {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user: user, pass: pass })
+        })
+          .then(function (r) {
+            if (r.ok) return r.json().then(goNext);
+            return r.json().catch(function () { return {}; }).then(function (data) {
+              showError(data.message || '用户名或密码错误');
+            });
+          })
+          .catch(function () { showError('登录失败，请检查网络连接'); })
+          .finally(function () { setLoading(false); });
+      });
+
+      AdminAuth.checkAuthEnabled()
+        .then(function (result) {
+          if (result === 'Not using basic auth.') {
+            goNext();
+            return;
+          }
+          return fetch('./api/manage/list?limit=1', { method: 'GET', credentials: 'include' })
+            .then(function (r) {
+              if (r.ok) goNext();
+            });
+        })
+        .catch(function () { /* show form */ })
+        .finally(function () {
+          document.body.classList.remove('is-loading');
+          document.getElementById('username').focus();
+        });
+    })();
+  </script>
+</body>
+</html>
