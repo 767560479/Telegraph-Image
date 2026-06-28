@@ -104,12 +104,12 @@
             <span class="media-card__bookmark" :class="{ 'is-liked': item.metadata.liked }" @click.stop="toggleLike(index, item.name)">
               <i :class="item.metadata.liked ? 'fa-solid fa-bookmark' : 'fa-regular fa-bookmark'"></i>
             </span>
-            <input type="checkbox" class="checkbox-styled media-card__checkbox" v-model="item.selected">
+            <input type="checkbox" class="checkbox-styled media-card__checkbox" v-model="item.selected" @change="$event.target.blur()">
             <img class="media-card__img" :src="'/file/' + item.name" loading="lazy" :alt="item.metadata.fileName || item.name" @click="openLightbox('/file/' + item.name)">
             <div class="media-card__overlay">
               <div class="media-card__overlay-btns">
                 <button type="button" class="button-secondary button-secondary--sm" @click.stop="handleEditName(item)">编辑</button>
-                <button type="button" class="button-primary button-secondary--sm" @click.stop="handleCopy(index, item.name)">复制</button>
+                <button type="button" class="button-secondary button-secondary--sm" @click.stop="handleCopy(index, item.name)">复制</button>
                 <button type="button" class="button-secondary button-secondary--sm" @click.stop="handleDelete(index, item.name)">删除</button>
               </div>
             </div>
@@ -225,7 +225,6 @@
         search: '',
         currentPage: 1,
         pageSize: 15,
-        selectedFiles: [],
         sortOption: 'dateDesc',
         filterOption: 'all',
         fileType: 'image',
@@ -293,13 +292,12 @@
             this.fileType === 'video' ? 'fas fa-video' :
             this.fileType === 'audio' ? 'fas fa-music' :
             this.fileType === 'document' ? 'fas fa-folder-open' : '';
+        },
+        selectedFiles() {
+          return this.tableData.filter(file => file.selected);
         }
       },
       watch: {
-        tableData: {
-          handler(newData) { this.selectedFiles = newData.filter(file => file.selected); },
-          deep: true
-        },
         sortOption(newOption) { localStorage.setItem('sortOption', newOption); },
         filterOption(newOption) { localStorage.setItem('filterOption', newOption); },
         filteredTableData() {
@@ -438,6 +436,9 @@
           const fileIndex = this.tableData.findIndex(file => file.name === name);
           this.tableData[fileIndex].selected = !this.tableData[fileIndex].selected;
         },
+        clearSelection() {
+          this.tableData.forEach(file => { file.selected = false; });
+        },
         toggleLike(index, name) {
           const fileIndex = this.tableData.findIndex(file => file.name === name);
           this.tableData[fileIndex].metadata.liked = !(this.tableData[fileIndex].metadata.liked ?? false);
@@ -490,16 +491,17 @@
           this.paginatedTableData.forEach(file => { file.selected = selected; });
         },
         handleBatchDelete() {
-          this.$confirm('此操作将永久删除这 ' + this.selectedFiles.length + ' 个文件, 是否继续?', '提示').then(() => {
-            Promise.all(this.selectedFiles.map(file => fetch(`./api/manage/delete/${file.name}`, { method: 'GET', credentials: 'include' })))
+          const files = this.selectedFiles.slice();
+          this.$confirm('此操作将永久删除这 ' + files.length + ' 个文件, 是否继续?', '提示').then(() => {
+            Promise.all(files.map(file => fetch(`./api/manage/delete/${file.name}`, { method: 'GET', credentials: 'include' })))
               .then(results => {
                 results.forEach((response, idx) => {
                   if (response.ok) {
-                    const fileIndex = this.tableData.findIndex(file => file.name === this.selectedFiles[idx].name);
+                    const fileIndex = this.tableData.findIndex(file => file.name === files[idx].name);
                     if (fileIndex !== -1) this.tableData.splice(fileIndex, 1);
                   }
                 });
-                this.selectedFiles = [];
+                this.clearSelection();
                 this.updateStats();
                 this.$message.success('批量删除成功!');
               })
@@ -512,8 +514,9 @@
             .then(() => this.$message.success('批量复制链接成功~'));
         },
         handleBatchDownload() {
-          this.$message.info(`正在下载 ${this.selectedFiles.length} 个文件`);
-          this.selectedFiles.forEach((file, index) => {
+          const files = this.selectedFiles.slice();
+          this.$message.info(`正在下载 ${files.length} 个文件`);
+          files.forEach((file, index) => {
             setTimeout(() => {
               const link = document.createElement('a');
               link.href = `/file/${file.name}`;
@@ -521,22 +524,23 @@
               link.click();
             }, index * 800);
           });
-          this.selectedFiles = [];
+          this.clearSelection();
         },
         handleBatchBlockOrUnblock(type) {
           if (type !== 'Block' && type !== 'White') { this.$message.error('无效的操作类型'); return; }
           const typeToName = { Block: '黑名单', White: '白名单' };
-          this.$confirm(`确定要将这 ${this.selectedFiles.length} 个文件加入${typeToName[type]}吗?`, '提示').then(() => {
-            Promise.all(this.selectedFiles.map(file => fetch(`./api/manage/${type.toLowerCase()}/${file.name}`, { method: 'GET', credentials: 'include' })))
+          const files = this.selectedFiles.slice();
+          this.$confirm(`确定要将这 ${files.length} 个文件加入${typeToName[type]}吗?`, '提示').then(() => {
+            Promise.all(files.map(file => fetch(`./api/manage/${type.toLowerCase()}/${file.name}`, { method: 'GET', credentials: 'include' })))
               .then(responses => {
                 responses.forEach((response, index) => {
                   if (response.ok) {
-                    const fileIndex = this.tableData.findIndex(item => item.name === this.selectedFiles[index].name);
+                    const fileIndex = this.tableData.findIndex(item => item.name === files[index].name);
                     if (fileIndex !== -1) this.tableData[fileIndex].metadata.ListType = type;
                   }
                 });
                 this.$message.success(`批量加入${typeToName[type]}成功`);
-                this.selectedFiles = [];
+                this.clearSelection();
               })
               .catch(() => this.$message.error('操作失败，请检查网络连接'));
           });

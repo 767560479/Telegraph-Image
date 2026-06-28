@@ -27,10 +27,10 @@
 
   <main>
     <div class="waterfall-box box"></div>
-    <button type="button" id="loadMore" class="button-secondary waterfall-load" onclick="loadMore()">加载更多</button>
+    <button type="button" id="loadMore" class="button-secondary waterfall-load">加载更多</button>
   </main>
 
-  <div id="bigimg" class="lightbox" onclick="closeBigImg();"></div>
+  <div id="bigimg" class="lightbox"></div>
   <div class="toast" id="toast" role="status"></div>
 
   <footer class="site-footer">
@@ -42,7 +42,8 @@
   <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.4/dist/jquery.min.js"></script>
   <script>
     var cursor = null;
-    var itemWidth = 200;
+    var ITEM_WIDTH = 200;
+    var ITEM_GAP = 10;
 
     function showToast(msg) {
       var el = document.getElementById('toast');
@@ -75,19 +76,27 @@
 
     function openPreview(name) {
       var bigImg = document.getElementById('bigimg');
-      bigImg.innerHTML = '<img src="/file/' + name + '" alt="preview">';
+      bigImg.innerHTML = '<img src="/file/' + encodeURIComponent(name).replace(/%2F/g, '/') + '" alt="preview">';
       bigImg.classList.add('is-open');
     }
 
+    function closeBigImg() {
+      var bigImg = document.getElementById('bigimg');
+      bigImg.classList.remove('is-open');
+      bigImg.innerHTML = '';
+    }
+
+    $('#bigimg').on('click', closeBigImg);
+
     function deleteFile(name) {
       if (!confirm('确认删除该条记录吗?')) return;
-      fetch('./api/manage/delete/' + name, { method: 'GET', credentials: 'include' })
+      fetch('./api/manage/delete/' + encodeURIComponent(name), { method: 'GET', credentials: 'include' })
         .then(function (r) {
           if (!r.ok) throw new Error('fail');
           $('.waterfall-item').filter(function () {
             return decodeURIComponent($(this).attr('data-name') || '') === name;
           }).remove();
-          waterfallHandler();
+          layoutWaterfall();
           showToast('删除成功');
         })
         .catch(function () { alert('删除失败，请检查网络'); });
@@ -97,20 +106,78 @@
       return decodeURIComponent($(el).closest('.waterfall-item').attr('data-name') || '');
     }
 
+    function buildItemHtml(name) {
+      var enc = encodeURIComponent(name);
+      var src = '/file/' + name;
+      return (
+        '<div class="waterfall-item" data-name="' + enc + '">' +
+          '<div class="waterfall-item__inner">' +
+            '<img src="' + src + '" alt="" loading="lazy">' +
+            '<div class="waterfall-item__overlay">' +
+              '<button type="button" class="button-secondary button-secondary--sm js-wf-copy">复制</button>' +
+              '<button type="button" class="button-secondary button-secondary--sm js-wf-preview">预览</button>' +
+              '<button type="button" class="button-secondary button-secondary--sm js-wf-delete">删除</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>'
+      );
+    }
+
+    function whenImagesReady($items, done) {
+      var $imgs = $items.find('img');
+      if (!$imgs.length) {
+        done();
+        return;
+      }
+      var remaining = $imgs.length;
+      function tick() {
+        remaining -= 1;
+        if (remaining <= 0) done();
+      }
+      $imgs.each(function () {
+        if (this.complete) tick();
+        else $(this).one('load error', tick);
+      });
+    }
+
+    function layoutWaterfall() {
+      var $box = $('.box');
+      var step = ITEM_WIDTH + ITEM_GAP;
+      var boxWidth = $box.innerWidth();
+      var columns = Math.max(1, Math.floor((boxWidth + ITEM_GAP) / step));
+      var heights = new Array(columns);
+      for (var c = 0; c < columns; c++) heights[c] = 0;
+
+      $box.find('.waterfall-item').each(function () {
+        var $item = $(this);
+        var minH = Math.min.apply(null, heights);
+        var col = heights.indexOf(minH);
+        $item.css({
+          width: ITEM_WIDTH + 'px',
+          top: minH + 'px',
+          left: col * step + 'px'
+        });
+        heights[col] += $item.outerHeight(true) + ITEM_GAP;
+      });
+
+      var maxH = Math.max.apply(null, heights.concat([0]));
+      $box.css('height', maxH + 'px');
+    }
+
     $(document).on('click', '.js-wf-copy', function (e) {
+      e.preventDefault();
       e.stopPropagation();
       copyUrl(itemNameFromEl(this));
     });
     $(document).on('click', '.js-wf-preview', function (e) {
+      e.preventDefault();
       e.stopPropagation();
       openPreview(itemNameFromEl(this));
     });
     $(document).on('click', '.js-wf-delete', function (e) {
+      e.preventDefault();
       e.stopPropagation();
       deleteFile(itemNameFromEl(this));
-    });
-    $(document).on('click', '.waterfall-item img', function () {
-      openPreview(itemNameFromEl(this));
     });
 
     function loadMore() {
@@ -125,47 +192,28 @@
           for (var i = 0; i < images.length; i++) {
             var name = images[i].name;
             if (!name || name.indexOf('.mp4') > 0) continue;
-            var enc = encodeURIComponent(name);
-            html +=
-              '<div class="waterfall-item" data-name="' + enc + '">' +
-              '<img src="/file/' + name + '" alt="">' +
-              '<div class="waterfall-item__overlay">' +
-              '<button type="button" class="button-primary button-secondary--sm js-wf-copy">复制</button>' +
-              '<button type="button" class="button-secondary button-secondary--sm js-wf-preview">预览</button>' +
-              '<button type="button" class="button-secondary button-secondary--sm js-wf-delete">删除</button>' +
-              '</div></div>';
+            html += buildItemHtml(name);
           }
-          document.querySelector('.box').insertAdjacentHTML('beforeend', html);
-          if (!cursor) document.getElementById('loadMore').style.display = 'none';
-          waterfallHandler();
+          if (!html) {
+            if (!cursor) $('#loadMore').hide();
+            return;
+          }
+          var $added = $(html);
+          $('.box').append($added);
+          whenImagesReady($added, layoutWaterfall);
+          if (!cursor) $('#loadMore').hide();
         },
         error: function () { alert('同步失败，请检查网络'); }
       });
     }
 
-    function waterfallHandler() {
-      var column = Math.max(1, parseInt(($(window).width() - 32) / itemWidth, 10));
-      var heightArr = [];
-      for (var i = 0; i < column; i++) heightArr[i] = 0;
-      $.each($('.waterfall-item'), function (_, item) {
-        var h = $(item).outerHeight();
-        var minHeight = Math.min.apply(null, heightArr);
-        var minIndex = heightArr.indexOf(minHeight);
-        $(item).css({ top: minHeight + 'px', left: minIndex * itemWidth + 'px' });
-        heightArr[minIndex] += h;
-      });
-      var maxH = Math.max.apply(null, heightArr.concat([0]));
-      $('.box').css('height', maxH + 'px');
-    }
+    var resizeTimer;
+    $(window).on('resize', function () {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(layoutWaterfall, 150);
+    });
 
-    $(window).resize(function () { waterfallHandler(); });
-
-    function closeBigImg() {
-      var bigImg = document.getElementById('bigimg');
-      bigImg.classList.remove('is-open');
-      bigImg.innerHTML = '';
-    }
-
+    $('#loadMore').on('click', loadMore);
     loadMore();
   </script>
 </body>
