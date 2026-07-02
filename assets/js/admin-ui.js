@@ -103,7 +103,7 @@
       });
     },
     installVue: function (Vue) {
-      Vue.prototype.$message = function (opts) {
+      function message(opts) {
         if (typeof opts === 'string') opts = { message: opts };
         var typeMap = { success: 'success', error: 'error', warning: 'warning', info: '' };
         if (opts.duration === 0) {
@@ -111,7 +111,20 @@
           return loadingToast;
         }
         return showToast(opts.message, typeMap[opts.type] || '', opts.duration);
+      }
+      message.success = function (text, duration) {
+        return message({ message: text, type: 'success', duration: duration });
       };
+      message.error = function (text, duration) {
+        return message({ message: text, type: 'error', duration: duration });
+      };
+      message.warning = function (text, duration) {
+        return message({ message: text, type: 'warning', duration: duration });
+      };
+      message.info = function (text, duration) {
+        return message({ message: text, type: 'info', duration: duration });
+      };
+      Vue.prototype.$message = message;
       Vue.prototype.$confirm = function (message, title, options) {
         options = options || {};
         return global.AdminUI.confirm(message, title, {

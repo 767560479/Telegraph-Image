@@ -647,11 +647,20 @@
               return true;
             }
           }).then(({ value }) => {
-            fetch(`./api/manage/editName/${item.name}?newName=${encodeURIComponent(value)}`, { method: 'GET', credentials: 'include' })
-              .then(response => response.json())
-              .then(result => {
-                if (result.success) { item.metadata.fileName = value; this.$message.success('文件名修改成功'); }
-                else this.$message.error('文件名修改失败');
+            fetch(`./api/manage/editName/${encodeURIComponent(item.name)}?newName=${encodeURIComponent(value)}`, { method: 'GET', credentials: 'include' })
+              .then(async (response) => {
+                const result = await response.json().catch(() => ({}));
+                if (response.status === 401) {
+                  AdminAuth.redirectToLogin();
+                  return;
+                }
+                if (response.ok && result.success) {
+                  if (!item.metadata) this.$set(item, 'metadata', {});
+                  item.metadata.fileName = result.fileName || value;
+                  this.$message.success('文件名修改成功');
+                  return;
+                }
+                this.$message.error(result.error || '文件名修改失败');
               })
               .catch(() => this.$message.error('修改文件名时出错，请检查网络连接'));
           }).catch(() => {});
